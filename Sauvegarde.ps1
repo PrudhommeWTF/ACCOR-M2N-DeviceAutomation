@@ -363,9 +363,12 @@ $EdgePath = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
 $PublicDesktop = [System.Environment]::GetFolderPath('CommonDesktopDirectory')
 
 # Raccourci Outlook principal
-$OutlookMainShortcut = Join-Path -Path $PublicDesktop -ChildPath $Language.Path.OutlookPrincipal
-New-Shortcut -TargetApplication $EdgePath -OutputDirectory $PublicDesktop -Name $Language.Path.OutlookPrincipal -Description $Language.Path.OutlookPrincipal_Description -Arguments 'https://outlook.office365.com/mail/' -IconPath "$EdgePath,0" | Out-Null
-Write-ProgressMessage $Language.ProgressMessageMainOutlook
+try {
+    New-Shortcut -TargetApplication $EdgePath -OutputDirectory $PublicDesktop -Name $Language.Path.OutlookPrincipal -Description $Language.Path.OutlookPrincipal_Description -Arguments 'https://outlook.office365.com/mail/' -IconPath "$EdgePath,0" | Out-Null
+    Write-ProgressMessage $Language.ProgressMessageMainOutlook
+} catch {
+    Write-Log -Message "Erreur lors de la création du raccourci Outlook principal : $($_.Exception.Message)" -Level 'ERROR'
+}
 
 # Raccourcis délégués
 $UserFolders = Get-ChildItem -Path 'C:\Users' | Where-Object { $_.PSIsContainer -and $_.Name -match '^H[A-Za-z0-9]{4}(-[A-Za-z]{2})?$' }
@@ -373,8 +376,12 @@ foreach ($UserFolder in $UserFolders) {
     $Username = $UserFolder.Name
     $DelegatedUrl = "https://outlook.office365.com/mail/$Username@accor.com"
     $DelegatedShortcutName = $Language.Path.OutlookDelegue -f $Username
-    New-Shortcut -TargetApplication $EdgePath -OutputDirectory $PublicDesktop -Name $DelegatedShortcutName -Description ($Language.Path.OutlookDelegue_Description -f $Username) -Arguments $DelegatedUrl -IconPath "$EdgePath,0" | Out-Null
-    Write-ProgressMessage ($Language.ProgressMessageUsersOutlook -f $Username)
+    try {
+        New-Shortcut -TargetApplication $EdgePath -OutputDirectory $PublicDesktop -Name $DelegatedShortcutName -Description ($Language.Path.OutlookDelegue_Description -f $Username) -Arguments $DelegatedUrl -IconPath "$EdgePath,0" | Out-Null
+        Write-ProgressMessage ($Language.ProgressMessageUsersOutlook -f $Username)
+    } catch {
+        Write-Log -Message "Erreur lors de la création du raccourci délégué ($Username) : $($_.Exception.Message)" -Level 'ERROR'
+    }
 }
 
 # Raccourci FOLS
@@ -424,8 +431,12 @@ if (Test-Path -Path $OneDrivePath) {
 }
 
 # Raccourci de restauration
-$RestoreShortcut = Join-Path -Path $PublicDesktop -ChildPath $Language.Path.RestoreShortcut
-New-Shortcut -TargetApplication 'powershell.exe' -OutputDirectory $PublicDesktop -Name $Language.Path.RestoreShortcut -Description $Language.Path.RestoreShortcut_Description -Arguments "-WindowStyle hidden -executionpolicy bypass -file `$PSScriptRoot\Restauration.ps1" -IconPath "$PSScriptRoot\Restauration.ico" | Out-Null
+try {
+    New-Shortcut -TargetApplication 'powershell.exe' -OutputDirectory $PublicDesktop -Name $Language.Path.RestoreShortcut -Description $Language.Path.RestoreShortcut_Description -Arguments "-WindowStyle hidden -executionpolicy bypass -file '$PSScriptRoot\Restauration.ps1'" -IconPath "$PSScriptRoot\Restauration.ico" | Out-Null
+    Write-Log -Message 'Raccourci de restauration créé avec succès.' -Level 'INFO'
+} catch {
+    Write-Log -Message "Erreur lors de la création du raccourci de restauration : $($_.Exception.Message)" -Level 'ERROR'
+}
 
 # Suppression de l'ancien raccourci
 $OldBackupShortcut = Join-Path -Path $PublicDesktop -ChildPath $Language.Path.excludeBackuplnk
